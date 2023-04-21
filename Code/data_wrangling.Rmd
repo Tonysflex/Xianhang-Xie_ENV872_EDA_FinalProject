@@ -1,0 +1,52 @@
+
+```{r}
+library(ggplot2)
+library(dplyr)
+df<-read.csv('../Data/Raw/Facility Air Pollution Dataset - All facilities.csv',sep=',',stringsAsFactors=F)
+```
+
+
+##Columns name/type
+```{r}
+colnames(df)<-c("ID","Facility.name","Rank.TRI.14","Rank.GHG.14","Latitude","Longitude","Address","City","State","ZIP","County","FIPS","Primary.NAICS","Second.primary.NAICS","Third.primary.NAICS","Industry.type","Parent.companies.2014.GHG","Parent.companies.2014.TRI","TRI.air.emissions.14","TRI.air.emissions.13","TRI.air.emissions.12","TRI.air.emissions.11","TRI.air.emissions.10","GHG.direct.emissions.14","GHG.direct.emissions.13","GHG.direct.emissions.12","GHG.direct.emissions.11","GHG.direct.emissions.10","GHG.ID","Second.GHG.ID","Third.GHG.ID","Fourth.GHG.ID","Fifth.GHG.ID","Sixth.GHG.ID","TRI.ID","Second.TRI.ID","Third.TRI.ID","Fourth.TRI.ID","Fifth.TRI.ID","FRS.ID","Second.FRS.ID","Third.FRS.ID","Fourth.FRS.ID")
+```
+
+```{r}
+convertValue<-function(x){
+	val<-0
+	if(x=='Not reported'){
+		val<-'NA'
+	}
+	else if(x!='Not reported'){
+		val<-as.numeric(gsub(",","",x))
+	}
+	return(val)
+}
+
+df[c(3:4,19:28)]<-lapply(df[c(3:4,19:28)], convertValue)
+```
+
+##Imputing `Code NAICS`
+
+```{r,eval=F}
+naics_first_level<-data.frame(
+  "code"=c(11,21,22,23,31,32,33,42,43,44,45,48,49,51,52,53,54,55,56,61,62,71,72,81,92),
+  "industry.name" = c("Agriculture, Forestry, Fishing and Hunting", "Mining", "Utilities", "Construction", "Manufacturing", "Manufacturing", "Manufacturing", "Wholesale Trade", "Wholesale Trade", "Retail Trade", "Retail Trade", "Transportation and Warehousing", "Transportation and Warehousing", "Information", "Finance and Insurance", "Real Estate Rental and Leasing", "Professional, Scientific, and Technical Services", "Management of Companies and Enterprises", "Administrative and Support and Waste Management and Remediation Services", "Educational Services", "Health Care and Social Assistance", "Arts, Entertainment, and Recreation", "Accommodation and Food Services", "Other Services (except Public Administration)", "Public Administration")
+```
+
+```{r,eval=T}
+  naics_first_level<-data.frame(
+  "code"=c(11,21,22,23,31,32,33,42,43,44,45,48,49,51,52,53,54,55,56,61,62,71,72,81,92),
+  "industry.name" = c("Agriculture,Forestry,Fishing and Hunting", "Mining", "Utilities", "Construction", "Manufacturing", "Manufacturing", "Manufacturing", "Wholesale Trade", "Wholesale Trade", "Retail Trade", "Retail Trade", "Transportation,Warehousing", "Transportation,Warehousing", "Information", "Finance,Insurance", "Real Estate Rental,Leasing", "Professional,Scientific,Technical Services", "Management of Companies and Enterprises", "Administrative,Support,WM,Remediation Services", "Educational Services", "Health Care,Social Assistance", "Arts,Entertainment,Recreation", "Accommodation,Food Services", "Other Services", "Public Administration")
+)
+
+naics_second_level<-data.frame(
+  "code" =c(111, 112, 113, 114, 115, 211, 212, 213, 221, 236, 237, 238, 311, 312, 313, 314, 315, 316, 321, 322, 323, 324, 325, 326, 327, 331, 332, 333, 334, 335, 336, 337, 339, 419, 441, 442, 443, 444, 445, 446, 447, 448, 451, 452, 453, 454, 481, 482, 483, 484, 485, 486, 487, 488, 491, 492, 493, 511, 512, 515, 517, 518, 519, 521, 522, 523, 524, 531, 532, 533, 541, 551, 561, 562, 611, 621, 622, 623, 624, 711, 712, 713, 721, 722, 811, 812, 813, 814),
+  "industry.name"=c("Crop Production", "Animal Production", "Forestry and Logging", "Fishing, Hunting and Trapping", "Support Activities for Agriculture and Forestry", "Oil and Gas Extraction", "Mining and Quarrying (except Oil and Gas)", "Support Activities for Mining and Oil and Gas Extraction", "Utilities", "Construction of Buildings", "Heavy and Civil Engineering Construction", "Specialty Trade Contractors", "Food Manufacturing", "Beverage and Tobacco Product Manufacturing", "Textile Mills", "Textile Product Mills", "Clothing Manufacturing", "Leather and Allied Product Manufacturing", "Wood Product Manufacturing", "Paper Manufacturing", "Printing and Related Support Activities", "Petroleum and Coal Product Manufacturing", "Chemical Manufacturing", "Plastics and Rubber Products Manufacturing", "Non-Metallic Mineral Product Manufacturing", "Primary Metal Manufacturing", "Fabricated Metal Product Manufacturing", "Machinery Manufacturing", "Computer and Electronic Product Manufacturing", "Electrical Equipment, Appliance and Component Manufacturing", "Transportation Equipment Manufacturing", "Furniture and Related Product Manufacturing", "Miscellaneous Manufacturing", "Wholesale Electronic Markets, and Agents and Brokers", "Motor Vehicle and Parts Dealers", "Furniture and Home Furnishings Stores", "Electronics and Appliance Stores", "Building Material and Garden Equipment and Supplies Dealers", "Food and Beverage Stores", "Health and Personal Care Stores", "Gasoline Stations", "Clothing and Clothing Accessories Stores", "Sporting Goods, Hobby, Book and Music Stores", "General Merchandise Stores", "Miscellaneous Store Retailers", "Non-Store Retailers", "Air Transportation", "Rail Transportation", "Water Transportation", "Truck Transportation", "Transit and Ground Passenger Transportation", "Pipeline Transportation", "Scenic and Sightseeing Transportation", "Support Activities for Transportation", "Postal Service", "Couriers and Messengers", "Warehousing and Storage", "Publishing Industries (except Internet)", "Motion Picture and Sound Recording Industries", "Broadcasting (except Internet)", "Telecommunications", "Data Processing, Hosting, and Related Services", "Other Information Services", "Monetary Authorities - Central Bank", "Credit Intermediation and Related Activities", "Securities, Commodity Contracts, and Other Financial Investment and Related Activities", "Insurance Carriers and Related Activities", "Real Estate", "Rental and Leasing Services", "Lessors of Non-Financial Intangible Assets (Except Copyrighted Works)", "Professional, Scientific and Technical Services", "Management of Companies and Enterprises", "Administrative and Support Services", "Waste Management and Remediation Services", "Educational Services", "Ambulatory Health Care Services", "Hospitals", "Nursing and Residential Care Facilities", "Social Assistance", "Performing Arts, Spectator Sports and Related Industries", "Heritage Institutions", "Amusement, Gambling and Recreation Industries", "Accommodation Services", "Food Services and Drinking Places", "Repair and Maintenance", "Personal and Laundry Services", "Religious, Grant-Making, Civic, and Professional and Similar Organizations", "Private Households"))
+```
+
+```{r}
+df$primary.industry <-sapply(as.integer(df$Primary.NAICS / 10000), function(x) naics_first_level$industry.name[match(x, naics_first_level$code)])
+df$second.industry <-sapply(as.integer(df$Primary.NAICS / 1000), function(x) naics_second_level$industry.name[match(x, naics_second_level$code)])
+write.csv(df, file = "../Data/Processed/Facility Air Pollution Dataset - All facilities.csv")
+```

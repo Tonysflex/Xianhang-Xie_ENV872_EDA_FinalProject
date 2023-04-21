@@ -1,0 +1,363 @@
+---
+title: ""
+author: "Xianhang Xie"
+output:
+  bookdown::html_document2:
+    df_print: paged
+    toc: true
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+subtitle: https://github.com/Tonysflex/Xianhang-Xie_ENV872_EDA_FinalProject
+geometry: margin=2.54cm
+fontsize: 12pt
+mainfont: Times New Roman
+---
+
+\newpage
+\tableofcontents 
+\newpage
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message=FALSE,warning=FALSE, echo = FALSE)
+#load packages and csv file
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(ggthemes)
+library(RColorBrewer)
+library(ggrepel)
+library(reshape2)
+library(choroplethr)
+options(width=100)
+my_theme <- theme_classic(base_size = 14) +
+  theme(axis.text = element_text(color = "black"), 
+        legend.position = "bottom", legend.text=element_text(size=8), 
+        legend.title=element_text(size=10), panel.background = element_rect(fill = "gray95"), 
+        panel.grid.major = element_line(size = 0.6, linetype = 'solid', colour = "white"),
+        title = element_text(size = 12))
+theme_set(my_theme)
+```
+
+
+# Rationale and Research Questions
+
+The release of toxic chemicals and greenhouse gases into the environment poses a significant threat to public health and the planet's sustainability. The EPA's Toxic Release Inventory (TRI) and Greenhouse Gas Reporting Inventory (GHG) collect emissions data from facilities across the United States. The TRI Program covers chemicals that cause cancer or other chronic human health effects, significant adverse acute human health effects, and significant adverse environmental effects. 
+
+The dataset combines geographical and industry-related data with facility-level emissions data from 2010 to 2014 to provide a comprehensive understanding of the sources and patterns of emissions across the country. Understanding the patterns of emissions is critical to designing effective mitigation and remediation strategies that can help reduce the harmful effects of these emissions on both the environment and human health. This analysis will provide valuable insights into the sources and patterns of emissions in different industries and regions, and these insights can be used to inform policy and regulatory decisions.
+
+The central research questions for this analysis include identifying the States and Industries with the highest levels of toxic release and greenhouse gas emissions, as ranked by the Tri.Rank and GHG.Rank respectively, where 1 = most emission. Additionally, this analysis will explore the spatial distribution of emissions to identify if specific regions in the United States were more heavily impacted by toxic release and greenhouse gas emissions than others. Finally, this analysis will examine the impact of the current administration's decision to cut the EPA's budget on emissions data collection and analysis. The findings of this analysis will provide valuable insights into the sources and patterns of emissions in the United States and can inform policy decisions aimed at mitigating the impact of these emissions on both the environment and public health.
+
+# Research Questions
+
+ **Question 1**: How do the Green house gas and Toxic Release Inventory emission distrubted over regions and industry types
+
+ **Question 2**: How do the Green house gas and Toxic Release Inventory emission change over time?
+ 
+\newpage
+
+# Dataset Information
+
+The dataset provided combines the 2010-2014 "Facility-Level" emissions data with geographical and industry-related data. It is based on the EPA's Toxic Release Inventory (TRI) and Greenhouse Gas Reporting Inventory (GHG), the national system of nomenclature that is used to describe industry-related emissions. 
+
+Chemicals covered by the `TRI` Program are those that cause:
+
+* Cancer or other chronic human health effects
+* Significant adverse acute human health effects
+* Significant adverse environmental effects
+
+The dataset contains 28 columnar variables, including UniqueID, Facility name, Rank TRI '14, Rank GHG '14, Latitude, Longitude, Location address, City, State, ZIP, County, FIPS code, Primary NAICS, Second primary NAICS, Third primary NAICS, Industry type, Parent companies 2014 (GHG), Parent companies 2014 (TRI), TRI air emissions 14 (in pounds), TRI air emissions 13 [and previous years], GHG direct emissions 14 (in metric tons), GHG direct emissions 13 [and previous years], GHG Facility Id, Second GHG Facility Id [and Third, Fourth, etc.], TRI Id, Second TRI Id [and Third, Fourth, etc.], FRS Id, Second FRS Id [and Third, Fourth, etc.]. The dataset was made available by the Center for Public Integrity. It can be downloaded from Kaggle: us-facilitylevel-air-pollution-20102014.
+
+# Data Wrangling
+
+In this data wrangling process, we started by renaming some of the columns to improve their readability. This is because the original dataset had some columns with unclear or ambiguous names. We then converted some of the columns from character type to numeric type. Specifically, we converted columns 3-4 and 19-28 from character to numeric using a conversion function. We then focused on the North American Industry Classification System (NAICS) codes. The NAICS codes are used to classify business establishments for statistical purposes. We created two lookup tables for the main industries classification (2 and 3 digits), which we labeled as naics_first_level and naics_second_level. Using the lookup tables, we imputed the primary and second industry columns in the dataset. We used the first four digits of the Primary.NAICS column to match with naics_first_level and the first five digits to match with naics_second_level. These preprocessing steps will facilitate our data analysis by making the data more manageable and easier to work with. The new column names are more descriptive, and the data type conversion will allow us to perform calculations on the columns of interest.
+
+# Exploratory Analysis 
+
+```{r}
+df = read.csv(file = "../Data/Processed/Facility Air Pollution Dataset - All facilities.csv")
+```
+
+The exploratory data analysis (EDA) performed on our dataset involves the utilization of visualizations and summarization methods to gain insight into the dataset's characteristics and distribution. We first begin with a visualization of facility counts by their primary industry, using a log scale to better represent the vast differences in facility counts among industries. The majority of the facilities are concentrated in industries such as Manufacturing, Utilities, Administrative and Support and Waste Management and Remediation Services, Mining, and Wholesale Trade.
+
+Then we make the next visualizations concentrate on environmental impact rankings of facilities, specifically the greenhouse gas (GHG) and Toxic Release Inventory (TRI) rankings in 2014. These rankings are plotted by the primary industry in a boxplot with jittered points that illustrate the distribution of rankings across industries. A summary table is also included, detailing the count of facilities and the mean rank for each industry in descending order of facility count. The table and plots help identify which industries have the highest environmental impact and those with the greatest variance in environmental impact rankings.
+
+* Below is the visualization of facility counts by their primary industry, using a log scale to better represent the vast differences in facility counts among industries.
+
+```{r EDAplot1, fig.height=6, fig.width=10}
+df %>% 
+  dplyr::group_by(primary.industry) %>% summarize(count=n()) %>% 
+  ggplot(aes(x=reorder(primary.industry,count),y=count,fill=primary.industry)) + 
+  geom_bar(stat='identity',color='black',size=.25) + theme_economist_white() + 
+  scale_fill_manual(name="",values = colorRampPalette(brewer.pal(9,'Paired'))(20)) +
+  scale_y_log10() +
+  theme(legend.position='bottom',
+        legend.direction='horizontal',
+        axis.text.x = element_blank(),
+        legend.text = element_text(size=6),
+          legend.key.size = unit(.5,"cm")) + ggtitle('Number of Facilities classified by their primary type')
+```
+
+The plot shows that the distribution of facilities across primary industries is highly uneven. The majority of facilities belong to a few industries, such as Manufacturing, Utilities, Administrative and Support and Waste Management and Remediation Services, Mining, and Wholesale Trade. Conversely, the Accommodation, Food Services, Arts, Entertainment, Recreation, Finance, Insurance, and Management of Companies and Enterprises industries have relatively few observations, with less than 10 facilities in each.
+
+* Below is the boxplot of greenhouse gas (GHG) 2014 ranking by the industry caterogy.
+
+```{r EDAplot2, fig.height=6, fig.width=10}
+df %>% select(primary.industry, Rank.GHG.14) %>% group_by(primary.industry) %>% 
+  ggplot(aes(x=primary.industry,y=Rank.GHG.14,fill=primary.industry)) +
+  geom_boxplot(colour='black',size = 0.5,alpha=.5) +
+  geom_jitter(shape=16,position=position_jitter(0.2),size=.25) + coord_flip() +
+  theme_economist_white() + 
+  scale_fill_manual(name="",values = colorRampPalette(brewer.pal(9,'Paired'))(20)) +
+  labs(title="GHG ranking of facilities by their primary type",
+       subtitle="Rank 1 = largest amount of emission") +
+  theme(legend.position='none',
+        axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 8),
+        axis.text.y = element_text(size = 8)
+        )
+```
+
+* Below is the table showing the first 6 industry with most counts and their mean rank of green house gas.
+
+```{r}
+df %>% select(primary.industry,Rank.GHG.14) %>%
+  na.omit() %>% dplyr::group_by(primary.industry) %>%
+  summarize(count=n(),meanGHG = mean(Rank.GHG.14)) %>%
+  arrange(-count) %>% head(6)
+```
+
+* Below is the boxplot of Toxic Release Inventory (TRI) 2014 ranking by the industry caterogy.
+
+```{r EDAplot3, fig.height=6, fig.width=10}
+df %>% select(primary.industry, Rank.TRI.14) %>% group_by(primary.industry) %>% 
+  ggplot(aes(x=primary.industry,y=Rank.TRI.14,fill=primary.industry)) +
+  geom_boxplot(colour='black',size=.4,alpha=.5) +
+  geom_jitter(shape=16,position=position_jitter(0.2),size=.25) + coord_flip() +
+  theme_economist_white() + 
+  scale_fill_manual(name="",values = colorRampPalette(brewer.pal(9,'Paired'))(20)) +
+  labs(title="TRI ranking of facilities by their primary type",
+       subtitle="1 = large amount of emission")  +
+  theme(legend.position='none',
+        axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 8),
+        axis.text.y = element_text(size = 8)
+        )
+```
+
+* Below is the table showing the first 6 industry with most counts and their mean rank of Toxic Release Inventory (TRI).
+
+```{r}
+df %>% select(primary.industry,Rank.TRI.14) %>%
+  na.omit() %>% dplyr::group_by(primary.industry) %>%
+  summarize(count=n(),meanGHG = mean(Rank.TRI.14)) %>%
+  arrange(-count) %>% head(6)
+```
+
+```{r}
+
+states_map<-map_data("state")
+usMap<-ggplot() + 
+  geom_map(data = states_map, map = states_map,aes(x = long, y = lat, map_id = region, group = group),
+           fill = "white", color = "black", size = 0.2) +
+  theme_economist_white() + 
+  theme(panel.grid.major = element_blank(),
+        axis.text=element_blank(),axis.ticks=element_blank(),
+        legend.position = c(0.9, 0.02))
+
+world_map<-map_data("world")
+wMap<-ggplot() + 
+  geom_map(data = world_map, map = world_map,aes(x = long, y = lat, map_id = region, 
+   group = group),fill = "white", color = "black", size = 0.2) + 
+  theme_economist_white() + theme(
+    panel.grid.major = element_blank(),
+    axis.text=element_blank(),
+    axis.ticks=element_blank(),
+    legend.position = c(0.9, 0.02))
+```
+
+# Analysis
+
+## Geographical distribution of green house gas emission of year 2014
+
+In this section, new categories are defined to differentiate between the three primary industries with the highest number of facilities in the dataset (Manufacturing, Utilities, and Mining) and the remaining industries, for the purpose of plotting. This will allow for easier visualization and comparison between these groups.
+
+```{r Geographical1, fig.height=6, fig.width=10}
+df$cat <- ifelse(df$primary.industry=='Manufacturing' | df$primary.industry=='Utilities' | df$primary.industry=='Mining','Manufacturing, Utilities, Mining','Others')
+mainMap<-usMap + 
+  geom_point(data=filter(df,Longitude < 0 & Longitude > -130 & Latitude > 20 & Latitude < 50),aes(x=Longitude,y=Latitude,color=cat,size=GHG.direct.emissions.14),alpha=.5) + theme_fivethirtyeight() +
+  scale_color_manual(name="",values=c("#46ACC8","#F21A00")) +
+  labs(title="GHG air emissions; year 2014",
+       subtitle="unit : pounds\nAlaska, Hawaii territories not scaled") + theme(legend.title=element_blank(),legend.position = c(0.7, 1.06),panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank())
+
+HIMap<-wMap + geom_point(data=filter(df,State=='HI'),aes(x=Longitude,y=Latitude,color=cat,size=GHG.direct.emissions.14),alpha=.5) + theme_fivethirtyeight() +
+  scale_color_manual(name="",values=c("#46ACC8","#F21A00")) + theme(legend.position='None',panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),plot.title=element_text(size=8)) +xlim(-162,-154) + ylim(18,23) + ggtitle("Hawaii")
+
+ALMap<-wMap + geom_point(data=filter(df,State=='AK'),aes(x=Longitude,y=Latitude,color=cat,size=GHG.direct.emissions.14),alpha=.5) + theme_fivethirtyeight() +
+  scale_color_manual(name="",values=c("#46ACC8","#F21A00")) + theme(legend.position='None',panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),plot.title=element_text(size=8)) +xlim(-180,-130) + ylim(50,75) + ggtitle("Alaska")
+
+alaska<-ggplotGrob(ALMap)
+hawaii<-ggplotGrob(HIMap)
+
+mainMap + annotation_custom(grob = alaska, xmin= -130, xmax=-118,ymin=21,ymax=30) + annotation_custom(grob = hawaii, xmin= -120, xmax=-108,ymin=21,ymax=30)
+```
+
+Here we display the geographical distribution of facilities in the US with their greenhouse gas (GHG) direct emissions in 2014, categorized by primary industry. The map is divided into two parts: the mainland US and the Hawaii and Alaska territories. The facilities in Manufacturing, Utilities, and Mining industries are categorized together, while the remaining industries are grouped into the "Others" category. The size of the points represents the magnitude of GHG direct emissions, and the color represents the primary industry category. The legend indicates which color represents each category. Alaska and Hawaii territories are shown on separate maps, as they are not scaled to the mainland US. 
+
+The plot reveals that the Manufacturing, Utilities, and Mining industries emit significantly more greenhouse gas compared to other industries, which is consistent with our expectations. Large greenhouse gas emissions are widespread across the United States and could potentially represent power plants. Additionally, regions such as the lake area, Texas, Florida, and the East Coast have higher emissions due to the high concentration of manufacturing industries in these areas.
+
+## Geographical distribution of Toxic Release Inventory  emission of year 2014
+
+
+```{r Geographical2, fig.height=6, fig.width=10}
+df$cat <- df$primary.industry
+df$cat[!(df$primary.industry=='Manufacturing' | df$primary.industry=='Utilities' | df$primary.industry=='Mining')] = 'Others'
+mainMap<-usMap + 
+  geom_point(data=filter(df,Longitude < 0 & Longitude > -130 & Latitude > 20 & Latitude < 50),aes(x=Longitude,y=Latitude,color=cat,size=TRI.air.emissions.14),alpha=.5) + theme_fivethirtyeight() +
+  labs(title="TRI air emissions; year 2014",
+       subtitle="unit : tons\nAlaska, Hawaii territories not scaled") + theme(legend.title=element_blank(),legend.position = c(0.7, 1.06),panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank())
+
+HIMap<-wMap + geom_point(data=filter(df,State=='HI'),aes(x=Longitude,y=Latitude,color=cat,size=TRI.air.emissions.14),alpha=.5) + theme_fivethirtyeight() + theme(legend.position='None',panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),plot.title=element_text(size=8)) +xlim(-162,-154) + ylim(18,23) + ggtitle("Hawaii")
+
+ALMap<-wMap + geom_point(data=filter(df,State=='AK'),aes(x=Longitude,y=Latitude,color=cat,size=TRI.air.emissions.14),alpha=.5) + theme_fivethirtyeight() + theme(legend.position='None',panel.grid.major = element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),plot.title=element_text(size=8)) +xlim(-180,-130) + ylim(50,75) + ggtitle("Alaska")
+
+alaska<-ggplotGrob(ALMap)
+hawaii<-ggplotGrob(HIMap)
+
+mainMap + annotation_custom(grob = alaska, xmin= -130, xmax=-118,ymin=21,ymax=30) + annotation_custom(grob = hawaii, xmin= -120, xmax=-108,ymin=21,ymax=30)
+```
+
+The plot indicates that manufacturing is responsible for the largest Toxic Release Inventory (TRI) air emissions, followed by utilities. Similar to the previous plot, the regions with more industrial activity, such as the Lake area, Texas, Florida, and the East Coast, have higher TRI emissions.
+
+## The top 10 emissions
+
+```{r, fig.height=6, fig.width=10}
+df %>% arrange(Rank.GHG.14) %>% head(15) %>%
+  select(Facility.name, GHG.direct.emissions.14,
+         Industry.type) %>%
+  ggplot(aes(y=GHG.direct.emissions.14, x = Facility.name)) + 
+  geom_bar(aes(fill=Industry.type), stat = "identity") +
+  theme_fivethirtyeight() +
+  labs(title="Facilities emissions for GHG top 15",subtitle="For year 14, emission in pounds") + 
+  theme(axis.text.x=element_blank()) 
+
+df %>% arrange(Rank.TRI.14) %>% head(15) %>%
+  select(Facility.name, TRI.air.emissions.14,
+         Industry.type) %>%
+  ggplot(aes(y=TRI.air.emissions.14, x = Facility.name)) + 
+  geom_bar(aes(fill=Industry.type), stat = "identity") +
+  theme_fivethirtyeight() +
+  labs(title="Facilities emissions for TRI top 15",subtitle="For year 14, emission in pounds") + 
+  theme(axis.text.x=element_blank()) 
+
+```
+
+The analysis of the dataset reveals interesting findings regarding the top 15 emitters of greenhouse gas (GHG) and Toxic Release Inventory (TRI). The plot shows that all of the top 15 emitters of GHG are power plants, indicating that the energy sector has a significant impact on GHG emissions. On the other hand, the top 15 emitters of TRI consist of mostly power plants, as well as metals, paper, and other industries. This suggests that a wider range of industries are responsible for TRI emissions, with power plants still being a major contributor. These findings highlight the importance of monitoring and regulating the emissions of power plants in the US, as well as implementing policies to reduce emissions from a wider range of industries.
+
+
+
+
+## The 2010-2014 greenhouse gas (GHG) emission analysis
+
+```{r, fig.height=8, fig.width=10}
+GHG.sum<-data.frame(
+  df %>% dplyr::select(primary.industry,GHG.direct.emissions.14,GHG.direct.emissions.13,
+                GHG.direct.emissions.12,GHG.direct.emissions.11,GHG.direct.emissions.10) %>% 
+    dplyr::group_by(primary.industry) %>% na.omit() %>% 
+    dplyr::summarize(sum.GHG.10 = sum(GHG.direct.emissions.10),
+              sum.GHG.11 = sum(GHG.direct.emissions.11),
+              sum.GHG.12 = sum(GHG.direct.emissions.12),
+              sum.GHG.13 = sum(GHG.direct.emissions.13),
+              sum.GHG.14 = sum(GHG.direct.emissions.14)))
+
+temp.ghg<-data.frame(GHG.sum %>% dplyr::select(-primary.industry) %>% t())
+colnames(temp.ghg)<-GHG.sum$primary.industry
+rownames(temp.ghg)<-1:nrow(temp.ghg)
+temp.ghg$year<-c(2010:2014)
+temp.ghg.melt<-reshape2::melt(temp.ghg,id="year")
+
+ggplot(temp.ghg.melt,aes(factor(year),value, group = variable)) + 
+  geom_line(size=2,alpha=1) + 
+  geom_point(size=1,color='black') + 
+  theme_fivethirtyeight() + 
+  facet_wrap(~variable, ncol = 3, scales = "free") +
+  labs(title="Sum of GHG emission",
+       subtitle="in pounds, across all States") + 
+  theme(legend.position='bottom',legend.direction='horizontal',legend.text = element_text(size=7))
+```
+
+The trends in greenhouse gas (GHG) emissions for different industries from 2010 to 2014 were examined, and it was found that Manufacturing and Utilities continued to be the two main contributors with no indication of a decrease. Finance showed significant improvement by reducing its GHG emissions to less than 1000 pounds. Agriculture initially saw a 20% increase in GHG emissions but eventually decreased to a 10% increase compared to 2010 by 2014. Mining experienced a 30% increase in GHG emissions in 2011 and remained stable from 2011 to 2014. Finally, Wholesale Trade showed a 17% increase in GHG emissions in 2014 compared to 2013. These trends highlight the different paths that industries are taking in terms of managing their GHG emissions and provide insight into which industries are making progress and which ones require further attention.
+
+## The 2010-2014 Toxic Release Inventory (TRI) emission analysis
+
+```{r, fig.height=6, fig.width=10}
+TRI.sum<-data.frame(
+  df %>% dplyr::select(primary.industry,TRI.air.emissions.14 ,TRI.air.emissions.13, TRI.air.emissions.12, TRI.air.emissions.11, TRI.air.emissions.10) %>% 
+    dplyr::group_by(primary.industry) %>% na.omit() %>% 
+    dplyr::summarize(sum.TRI.10 = sum(TRI.air.emissions.10),
+              sum.TRI.11 = sum(TRI.air.emissions.11),
+              sum.TRI.12 = sum(TRI.air.emissions.12),
+              sum.TRI.13 = sum(TRI.air.emissions.13),
+              sum.TRI.14 = sum(TRI.air.emissions.14)))
+
+temp.tri<-data.frame(TRI.sum %>% dplyr::select(-primary.industry) %>% t())
+colnames(temp.tri)<-TRI.sum$primary.industry
+rownames(temp.tri)<-1:nrow(temp.tri)
+temp.tri$year<-c(2010:2014)
+temp.tri.melt<-reshape2::melt(temp.tri,id="year")
+ggplot(temp.tri.melt,aes(factor(year),value, group = variable)) + 
+  geom_line(size=2,alpha=1) + 
+  geom_point(size=1,color='black') + 
+  theme_fivethirtyeight() + 
+  facet_wrap(~variable, ncol = 3, scales = "free") + 
+  labs(title="Sum of TRI emission",
+       subtitle="in tons, across all States") + 
+  theme(legend.position='bottom',legend.direction='horizontal',legend.text = element_text(size=7))
+```
+
+The Toxic Release Inventory (TRI) analysis reveals that Manufacturing and Utilities are the two primary industries with the highest environmental impact from 2010 to 2014. There is no sign of decrease in their impact during this period. Agriculture saw a significant decrease in its environmental impact, with its emissions dropping from 70k tons to around 2800 tons over the five years. Interestingly, Management was able to decrease its emission almost close to zero. In contrast, Construction almost doubled its emission between 2013 and 2014, indicating a significant increase in its environmental impact.
+
+## State total emission analysis
+
+```{r, fig.height=6, fig.width=10}
+
+makeMap<-function(temp,year,gaz){
+  temp$region<-sapply(temp$State, function(x) tolower(state.name[match(x, state.abb)]))
+  tt<-temp %>% dplyr::select(region,value) %>% na.omit() %>% dplyr::arrange(region)
+  choro = StateChoropleth$new(tt)
+  if(gaz=='GHG'){
+    choro$title  = paste0(2000 + year," GHG emission")
+    choro$ggplot_scale = scale_fill_manual(name="pounds", values = rev(viridis::magma(10)),drop=FALSE)
+  }
+  else if(gaz=='TRI'){
+    choro$title  = paste0(2000 + year," TRI emission")
+    choro$ggplot_scale = scale_fill_manual(name="tons", values = rev(viridis::magma(10)),drop=FALSE)
+  }
+  return(choro$render())
+}
+x<-paste0('GHG.direct.emissions.',14)
+temp = df %>% dplyr::select(State,.dots=x) %>% dplyr::group_by(State) %>% na.omit() %>% dplyr::summarize(value = sum(.dots))
+makeMap(temp,14,'GHG')
+
+x<-paste0('TRI.air.emissions.',14)
+temp = df %>% dplyr::select(State,.dots=x) %>% dplyr::group_by(State) %>% na.omit() %>% dplyr::summarize(value = sum(.dots))
+makeMap(temp,14,'TRI')
+
+x<-paste0('GHG.direct.emissions.',10)
+temp = df %>% dplyr::select(State,.dots=x) %>% dplyr::group_by(State) %>% na.omit() %>% dplyr::summarize(value = sum(.dots))
+makeMap(temp,10,'GHG')
+
+x<-paste0('TRI.air.emissions.',10)
+temp = df %>% dplyr::select(State,.dots=x) %>% dplyr::group_by(State) %>% na.omit() %>% dplyr::summarize(value = sum(.dots))
+makeMap(temp,10,'TRI')
+```
+
+# Summary and Conclusions
+
+In this analysis, we explored the greenhouse gas (GHG) and Toxic Release Inventory (TRI) emissions data for different industries across various US states from 2010 to 2014. The analysis revealed that Manufacturing and Utilities were the two primary industries with the highest GHG and TRI emissions, and there was no sign of a decrease in their impact during this period. Agriculture saw a significant decrease in its environmental impact, with its emissions dropping from 70k tons to around 2800 tons over the five years. Management was able to decrease its emission almost close to zero. In contrast, Construction almost doubled its emission between 2013 and 2014, indicating a significant increase in its environmental impact.
+
+The state-level analysis showed that California and Texas were the states with the highest GHG emissions, while Ohio and Texas were the states with the highest TRI emissions in 2014. However, the analysis also revealed that some states, such as New York and Massachusetts, made significant progress in reducing their emissions. Overall, the results provide valuable insights into which industries and states are making progress and which ones require further attention to reduce their environmental impact.
+
