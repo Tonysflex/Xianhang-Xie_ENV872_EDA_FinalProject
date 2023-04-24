@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "ENV872 final project"
 author: "Xianhang Xie"
 output:
   bookdown::html_document2:
@@ -51,7 +51,7 @@ The central research questions for this analysis include identifying the States 
 
 # Research Questions
 
- **Question 1**: How do the Green house gas and Toxic Release Inventory emission distrubted over regions and industry types
+ **Question 1**: How do the Green house gas and Toxic Release Inventory emission distributed over regions and industry types
 
  **Question 2**: How do the Green house gas and Toxic Release Inventory emission change over time?
  
@@ -257,8 +257,27 @@ df %>% arrange(Rank.TRI.14) %>% head(15) %>%
 
 The analysis of the dataset reveals interesting findings regarding the top 15 emitters of greenhouse gas (GHG) and Toxic Release Inventory (TRI). The plot shows that all of the top 15 emitters of GHG are power plants, indicating that the energy sector has a significant impact on GHG emissions. On the other hand, the top 15 emitters of TRI consist of mostly power plants, as well as metals, paper, and other industries. This suggests that a wider range of industries are responsible for TRI emissions, with power plants still being a major contributor. These findings highlight the importance of monitoring and regulating the emissions of power plants in the US, as well as implementing policies to reduce emissions from a wider range of industries.
 
+## Hypothesis test for emissions across all industries
 
+In order to determine if there is a significant difference in greenhouse gas (GHG) and Toxic Release Inventory (TRI) emissions across all industries, an ANOVA (Analysis of Variance) test can be conducted. The null hypothesis would be that there is no significant difference in GHG or TRI emissions across industries, while the alternative hypothesis would be that at least one industry has a different mean GHG emission than the others. The ANOVA test would require calculating the sum of squares between and within groups to calculate the F-statistic and corresponding p-value. If the p-value is less than the predetermined significance level (such as 0.05), we would reject the null hypothesis and conclude that at least one industry has a different mean GHG emission than the others.
 
+* Green house gas
+
+```{r}
+fit1 = aov(GHG.direct.emissions.14~primary.industry, data=df)
+summary(fit1)
+```
+
+The resulting P value is smaller than 0.05, thus we can conclude at least one industry type is different from others in GHG emission.
+
+* Toxic Release Inventory
+
+```{r}
+fit2 = aov(TRI.air.emissions.14~primary.industry, data=df)
+summary(fit2)
+```
+
+The resulting P value is smaller than 0.05, thus we can conclude at least one industry type is different from others in TRI emission.
 
 ## The 2010-2014 greenhouse gas (GHG) emission analysis
 
@@ -357,7 +376,7 @@ makeMap(temp,10,'TRI')
 
 # Summary and Conclusions
 
-In this analysis, we explored the greenhouse gas (GHG) and Toxic Release Inventory (TRI) emissions data for different industries across various US states from 2010 to 2014. The analysis revealed that Manufacturing and Utilities were the two primary industries with the highest GHG and TRI emissions, and there was no sign of a decrease in their impact during this period. Agriculture saw a significant decrease in its environmental impact, with its emissions dropping from 70k tons to around 2800 tons over the five years. Management was able to decrease its emission almost close to zero. In contrast, Construction almost doubled its emission between 2013 and 2014, indicating a significant increase in its environmental impact.
+In this analysis, we explored the greenhouse gas (GHG) and Toxic Release Inventory (TRI) emissions data for different industries across various US states from 2010 to 2014. The analysis revealed that Manufacturing and Utilities were the two primary industries with the highest GHG and TRI emissions, they are significantly having more emissions, and there was no sign of a decrease in their impact during this period. Agriculture saw a significant decrease in its environmental impact, with its emissions dropping from 70k tons to around 2800 tons over the five years. Management was able to decrease its emission almost close to zero. In contrast, Construction almost doubled its emission between 2013 and 2014, indicating a significant increase in its environmental impact.
 
 The state-level analysis showed that California and Texas were the states with the highest GHG emissions, while Ohio and Texas were the states with the highest TRI emissions in 2014. However, the analysis also revealed that some states, such as New York and Massachusetts, made significant progress in reducing their emissions. Overall, the results provide valuable insights into which industries and states are making progress and which ones require further attention to reduce their environmental impact.
 
